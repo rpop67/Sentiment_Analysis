@@ -1,5 +1,8 @@
 import re
 import string
+
+import nltk
+import numpy
 import pandas as pd
 from nltk.tokenize import word_tokenize
 from nltk.corpus import stopwords
@@ -9,7 +12,7 @@ from nltk.stem import WordNetLemmatizer
 from nltk.probability import FreqDist
 from textblob import TextBlob
 from matplotlib import pyplot as plt
-from wordcloud import WordCloud
+from wordcloud import WordCloud,STOPWORDS
 
 
 
@@ -25,7 +28,7 @@ alphabetset=[chr(i) for i in range(a,a+26)]
 
 
 def FilterCovidTweets(data):
-    tweetsList=data['TWEET']
+    tweetsList=data['absolute_tidy_tweets']
     # covidTweets={}
     tweetList=[]
     dateList=[]
@@ -39,7 +42,7 @@ def FilterCovidTweets(data):
     return covidDF
 
 def FilterBankTweets(data):
-    tweetsList=data['TWEET']
+    tweetsList=data['absolute_tidy_tweets']
     tweetList = []
     dateList = []
     bankTerms=["bank","recession","economy","transaction","collapse","fraud","finance","financial","rate",
@@ -76,14 +79,7 @@ def StemWords(words):
 #
 #
 #
-#     # #removing punctuation
-#     punctuations=string.punctuation
-#     # #not removing hyphen; incase considering time period
-#     punctuations.replace("-",'')
-#     pattern= r"[{}]".format(punctuations)
-#     words_punc_removed=[]
-#     for w in words_in_tweets:
-#         words_punc_removed.append(re.sub(pattern,"",w))
+
 #
 #     # print("after removing punctuation : ",words_punc_removed)
 #
@@ -104,17 +100,25 @@ def StemWords(words):
 
 
 
-def CreateWordCloud(data):
+def CreateWordCloud(tweetWords):
+    stopwords = set(STOPWORDS)
+
     # Create the wordcloud object
     #converting list of strings to a string
-    word_count_dict = []
-    word_count_dict=Counter(data for data in data)
-    wordcloud = WordCloud(width=1000, height=1000, random_state=21, max_font_size=200,
-                          background_color='white').generate_from_frequencies(word_count_dict)
-    plt.figure(figsize=(15, 10))
+
+    # wordcloud = WordCloud(width=800, height=800,
+    #                       background_color='white',
+    #                       stopwords=stopwords,
+    #                       min_font_size=10).generate(tweetWords)
+
+    words = nltk.tokenize.word_tokenize(tweetWords)
+    word_count_dict=Counter(str(word) for word in words)
+    wordcloud = WordCloud(width=580, height=290, random_state=21, max_font_size=100,
+                          background_color='white',stopwords=garbage).generate_from_frequencies(word_count_dict)
+    plt.figure(figsize=(5.7,2.7))
     plt.imshow(wordcloud, interpolation="bilinear")
     plt.axis('off')
-
+    plt.tight_layout(pad=0)
     plt.show()
 
 
@@ -475,8 +479,8 @@ def CompareSentiments(covidDF,bankDF):
 
     # #Polarity_List stores polarity of tweets preserving the order
     #forCovid df
-    print("DATA ki datee ------------- \n",data['DATE'])
-    print("Covid ki datee ------------- \n", covidDF['DATE'])
+    # print("DATA ki datee ------------- \n",data['DATE'])
+    # print("Covid ki datee ------------- \n", covidDF['DATE'])
 
 
     df1 = pd.DataFrame(list(zip(dateTimeListCovid, CovidPositiveList, CovidNegativeList, CovidNeutralList)),
@@ -492,8 +496,8 @@ def CompareSentiments(covidDF,bankDF):
     df2.set_index('DateTime')
 
     # print(df)
-    df1['Date'] = df1["DateTime"].apply(lambda df: pd.datetime.datetime(year=df.year, month=df.month, day=df.day))
-    df2['Date'] = df2["DateTime"].apply(lambda df: pd.datetime.datetime(year=df.year, month=df.month, day=df.day))
+    df1['Date'] = df1["DateTime"].apply(lambda df: pd.datetime(year=df.year, month=df.month, day=df.day))
+    df2['Date'] = df2["DateTime"].apply(lambda df: pd.datetime(year=df.year, month=df.month, day=df.day))
 
     newDF1 = pd.DataFrame(list(zip(df1['Date'], df1['CPositive'], df1['CNegative'], df1['CNeutral'])),columns=["Date", "CovidPOS", "CovidNEG", "CovidNEU"])
     newDF2 = pd.DataFrame(list(zip(df2['Date'], df2['BPositive'], df2['BNegative'], df2['BNeutral'])),
@@ -639,30 +643,106 @@ def CompareSentiments(covidDF,bankDF):
 
 
 
-    # PLOT A STACKED BAR CHART for  week1 ------COVID vs BANKING
-    totalCovidTweets_Week1 = CovidPositiveWeek1+CovidNegativeWeek1+CovidNeutralWeek1
-    totalBankTweets_Week1=BankPositiveWeek1+BankNeutralWeek1+BankNegativeWeek1
 
-    colors = ["#00695C", "#00897B", "#26A69A"]
-    data_2weeks = [["Covid-19(week1)", "Covid-19(week1)", "Covid-19(week1)", "Banking(week1)", "Banking(week1)", "Banking(week1)"],
-                   ["Positive", "Negative", "Neutral", "Positive", "Negative", "Neutral"],
-                   [CovidPositiveWeek1/ totalCovidTweets_Week1 * 100, CovidNegativeWeek1 / totalCovidTweets_Week1 * 100,
-                    CovidNeutralWeek1 / totalCovidTweets_Week1 * 100,
-                    BankPositiveWeek1 / totalBankTweets_Week1 * 100, BankNegativeWeek1 / totalBankTweets_Week1 * 100,
-                    BankNeutralWeek1 / totalBankTweets_Week1 * 100]
+
+
+    #2- week comparision of covid and banking tweets
+    # PLOT A STACKED BAR CHART for  week1 ------COVID vs BANKING
+    # totalCovidTweets_Week1 = CovidPositiveWeek1 + CovidNegativeWeek1 + CovidNeutralWeek1
+    # totalBankTweets_Week1 = BankPositiveWeek1 + BankNeutralWeek1 + BankNegativeWeek1
+    #
+    # colors = ["#00695C", "#00897B", "#26A69A"]
+    # data_2weeks = [
+    #     ["Covid-19(week1)", "Covid-19(week1)", "Covid-19(week1)", "Banking(week1)", "Banking(week1)", "Banking(week1)"],
+    #     ["Positive", "Negative", "Neutral", "Positive", "Negative", "Neutral"],
+    #     [CovidPositiveWeek1 / totalCovidTweets_Week1 * 100, CovidNegativeWeek1 / totalCovidTweets_Week1 * 100,
+    #      CovidNeutralWeek1 / totalCovidTweets_Week1 * 100,
+    #      BankPositiveWeek1 / totalBankTweets_Week1 * 100, BankNegativeWeek1 / totalBankTweets_Week1 * 100,
+    #      BankNeutralWeek1 / totalBankTweets_Week1 * 100]
+    #     ]
+    # print("data 2 weeks::: ", data_2weeks)
+    # rows_2Weeks = zip(data_2weeks[0], data_2weeks[1], data_2weeks[2])
+    # headers_2Weeks = ['Covid19 vs Banking Tweets', 'Tweet', 'Value']
+    # WeekDF_2Weeks = pd.DataFrame(rows_2Weeks, columns=headers_2Weeks)
+    # pivot_df_2Weeks = WeekDF_2Weeks.pivot(index='Covid19 vs Banking Tweets', columns='Tweet', values='Value')
+    # # Note: .loc[:,['Positive','Negative', 'Neutral']] is used here to rearrange the layer ordering
+    # pivot_df_2Weeks.loc[:, ['Positive', 'Negative', 'Neutral']].plot.bar(stacked=True, color=colors, figsize=(5, 7))
+    # plt.show()
+
+    #Total Tweets -----------WEEKLY
+    totalWeek1 = covidWeeklyList[0] + bankWeeklyList[0]
+    totalWeek2 = covidWeeklyList[1] + bankWeeklyList[1]
+    totalWeek3 = covidWeeklyList[2] + bankWeeklyList[2]
+    totalWeek4 = covidWeeklyList[3] + bankWeeklyList[3]
+    totalWeek5 = covidWeeklyList[4] + bankWeeklyList[4]
+    totalWeek6 = covidWeeklyList[5] + bankWeeklyList[5]
+
+    #totalTweets categorised
+
+
+    totalCovidTweets_Week1 = CovidPositiveWeek1 + CovidNegativeWeek1 + CovidNeutralWeek1
+    totalBankTweets_Week1 = BankPositiveWeek1 + BankNeutralWeek1 + BankNegativeWeek1
+
+    totalCovidTweets_Week2 = CovidPositiveWeek2 + CovidNegativeWeek2 + CovidNeutralWeek2
+    totalBankTweets_Week2 = BankPositiveWeek2 + BankNeutralWeek2 + BankNegativeWeek2
+
+    totalCovidTweets_Week3 = CovidPositiveWeek3 + CovidNegativeWeek3 + CovidNeutralWeek3
+    totalBankTweets_Week3 = BankPositiveWeek3 + BankNeutralWeek3 + BankNegativeWeek3
+
+    totalCovidTweets_Week4 = CovidPositiveWeek4 + CovidNegativeWeek4 + CovidNeutralWeek4
+    totalBankTweets_Week4 = BankPositiveWeek4 + BankNeutralWeek4 + BankNegativeWeek4
+
+    totalCovidTweets_Week5 = CovidPositiveWeek5 + CovidNegativeWeek5 + CovidNeutralWeek5
+    totalBankTweets_Week5 = BankPositiveWeek5 + BankNeutralWeek5 + BankNegativeWeek5
+
+    totalCovidTweets_Week6 = CovidPositiveWeek6 + CovidNegativeWeek6 + CovidNeutralWeek6
+    totalBankTweets_Week6 = BankPositiveWeek6 + BankNeutralWeek6 + BankNegativeWeek6
+
+    print("total weekly: \n", totalWeek1,totalWeek2,totalWeek3,totalWeek4,totalWeek5,totalWeek6)
+    print("covid weekly: \n",totalCovidTweets_Week1,totalCovidTweets_Week2,totalCovidTweets_Week3,totalCovidTweets_Week4,totalCovidTweets_Week5,totalCovidTweets_Week6)
+    print("bank weekly: \n", totalBankTweets_Week1, totalBankTweets_Week2,totalBankTweets_Week3, totalBankTweets_Week4,totalBankTweets_Week5, totalBankTweets_Week6)
+
+
+
+
+    #barplot
+    import numpy as np
+    import matplotlib.pyplot as plt
+    data=[[ 227,195,591,724,463,408],
+          [0,5,18,21,14,4],
+          [227,190,573,703,449,404]
+          ]
+    # data = [[totalWeek1,totalWeek2,totalWeek3,totalWeek4,totalWeek5,totalWeek6]
+    #         [totalCovidTweets_Week1, totalCovidTweets_Week2, totalCovidTweets_Week3,totalCovidTweets_Week4,totalCovidTweets_Week5,totalCovidTweets_Week6],
+    #         [totalBankTweets_Week1, totalBankTweets_Week2,totalBankTweets_Week3,totalBankTweets_Week4,totalBankTweets_Week5,totalBankTweets_Week6]]
+    X = np.arange(6)
+    fig = plt.figure()
+    ax = fig.add_axes([0, 0, 1, 1])
+    ax.bar(X + 0.00, data[0], color='b', width=0.25)
+    ax.bar(X + 0.25, data[1], color='g', width=0.25)
+    ax.bar(X + 0.50, data[2], color='r', width=0.25)
+    plt.show()
+
+    # PLOT A STACKED BAR CHART for  week1 ------COVID vs BANKING
+
+    colors = ["#00695C", "#00897B"]
+    data_2weeks = [["Week 3","Week 3","Week 5","Week 5"],
+                   ["Covid-19", "Bank", "Covid-19", "Bank",],
+                   [totalCovidTweets_Week3/ totalWeek3 * 100, totalBankTweets_Week3 / totalWeek3 * 100,
+                    totalCovidTweets_Week5/ totalWeek5 * 100, totalBankTweets_Week5 / totalWeek5 * 100,
+                    ]
                    ]
     print("data 2 weeks::: ",data_2weeks)
     rows_2Weeks = zip(data_2weeks[0], data_2weeks[1], data_2weeks[2])
-    headers_2Weeks = ['Covid19 vs Banking Tweets', 'Tweet', 'Value']
+    headers_2Weeks = ['Week3 vs Week5', 'Tweet', 'Value']
     WeekDF_2Weeks = pd.DataFrame(rows_2Weeks, columns=headers_2Weeks)
-    pivot_df_2Weeks = WeekDF_2Weeks.pivot(index='Covid19 vs Banking Tweets', columns='Tweet', values='Value')
+    pivot_df_2Weeks = WeekDF_2Weeks.pivot(index='Week3 vs Week5', columns='Tweet', values='Value')
     # Note: .loc[:,['Positive','Negative', 'Neutral']] is used here to rearrange the layer ordering
-    pivot_df_2Weeks.loc[:, ['Positive', 'Negative', 'Neutral']].plot.bar(stacked=True, color=colors, figsize=(5, 7))
+    pivot_df_2Weeks.loc[:, ["Covid-19", "Bank",]].plot.bar(stacked=True, color=colors, figsize=(5, 7))
     plt.show()
 
     # PLOT A STACKED BAR CHART for week 6----------------- COVID vs BANKING
-    totalCovidTweets_Week6 = CovidPositiveWeek6 + CovidNegativeWeek6 + CovidNeutralWeek6
-    totalBankTweets_Week6= BankPositiveWeek6 + BankNeutralWeek6 + BankNegativeWeek6
+
 
     colors = ["#00695C", "#00897B", "#26A69A"]
     data_2weeks = [
@@ -712,12 +792,7 @@ def CompareSentiments(covidDF,bankDF):
     plt.show()
 
     # PLOT A STACKED BAR CHART for  all weeks ------Total COVID vs BANKING
-    totalWeek1=covidWeeklyList[0]+bankWeeklyList[0]
-    totalWeek2=covidWeeklyList[1]+bankWeeklyList[1]
-    totalWeek3=covidWeeklyList[2]+bankWeeklyList[2]
-    totalWeek4=covidWeeklyList[3]+bankWeeklyList[3]
-    totalWeek5=covidWeeklyList[4]+bankWeeklyList[4]
-    totalWeek6=covidWeeklyList[5]+bankWeeklyList[5]
+
 
     print(covidWeeklyList)
     print(bankWeeklyList)
@@ -779,7 +854,7 @@ def CompareSentiments(covidDF,bankDF):
          CovidNeutralWeek6 / totalCovidTweets_Week6 * 100,
          ]
     ]
-    print("data 2 weeks::: ", data_2weeks)
+    print("data covid weekly::: ", data_2weeks)
     rows_2Weeks = zip(data_2weeks[0], data_2weeks[1], data_2weeks[2])
     headers_2Weeks = ['Polarity', 'Tweet', 'Value']
     WeekDF_2Weeks = pd.DataFrame(rows_2Weeks, columns=headers_2Weeks)
@@ -797,29 +872,45 @@ def CompareSentiments(covidDF,bankDF):
 
 
 
-def VisualiseCovidTweets(clean_data):
-    garbageTerms = ['', "http", "want", "need", "' ", '’ ', "us", "please", "hi", "hey", "find", "need", "due", "look",
-                    "including", "https", "open", "apply", "times", "hours", "time", "hello", "404", "nt", "able",
-                    "get", "know"]
-    # word_count_dict = []
-    # word_count_dict=Counter(data for data in clean_data)
-    freq = FreqDist(clean_data)
-    # print(freq)
-    top_freq=freq.most_common(10)
+def VisualiseTweets(tweetList):
+    tweetWords = ""
+    allTokens=""
+    stopwords=STOPWORDS
+    garbageTerms2 = ['', "http", "want", "need", "' ", '’ ', "us", "hi", "hey", "find", "due", "look","set","thats","sure","hsbc",
+                     "https", "open","hello", "404", "nt", "able", '.', 'hi','i','isa', "get", "know", '.','dm','via',
+                     "http", "want", "need", "' ", '’ ', "us", "please","nt", "able",'nick',"covid", "covid-19",'the','if','yuriy','tijianne','name',
+                     "get", "know", "coronavirus", "virus",'ank','im','22','see','alison','give','mill','see','via','sam','full','03457',"thank"]
+    for val in tweetList:
+
+        # typecaste each val to string
+        val = str(val)
+        if val != 'tweetnotfound':
+            # split the value
+            tokens = val.split()
+            tweetText=""
+            # Converts each token into lowercase
+            for i in range(len(tokens)):
+                tokens[i] = tokens[i].lower()
+                if tokens[i] not in garbageTerms2 and tokens[i] not in stopwords:
+                    allTokens+=tokens[i].lower()+" "
+                else :
+                    tokens[i]=''
+
+            tweetWords += "".join(str(tokens)) + ""
+    text_list = allTokens.split(" ")
+
+
+    print("\n\nTWEETWORDS - - --  \n", tweetWords)
+    freq = nltk.FreqDist(text_list)
+    print(freq)
+    top_freq=freq.most_common(15)
     print(top_freq)
     freq.plot(30,cumulative=False)
+
     plt.show()
 
-    # CreateWordCloud(clean_data)
+    CreateWordCloud(allTokens)
 
-def VisualiseBankTweets(clean_data):
-    garbageTerms = ['', "http", "want", "need", "' ", '’ ', "us", "please", "hi", "hey", "find", "need", "due", "look",
-                    "including", "https", "open", "apply", "times", "hours", "time", "hello", "404", "nt", "able",
-                    "get", "know"]
-    freq=FreqDist(clean_data)
-    freq.plot(30,cumulative=False)
-    plt.show()
-    CreateWordCloud(clean_data)
 
 
 # print(df)
@@ -858,15 +949,34 @@ data['tidy_tweets'] = cleaned_tweets
 data.drop_duplicates(subset=['tidy_tweets'], keep=False)
 
 # removing punctuations
-data['absolute_tidy_tweets'] = data['tidy_tweets'].str.replace("[^a-zA-Z# ]", "")
+punctuations=string.punctuation
+garbage=["'",'[',']',".",",",'<','!','&','(',')']
+# data['absolute_tidy_tweets'] = data['tidy_tweets'].str.replace("[^a-zA-Z# ]", "")
+data['absolute_tidy_tweets'] = data['tidy_tweets'].apply(lambda x:''.join([i for i in x if i not in punctuations and i not in garbage]))
+
+
+# # #removing punctuation
+#     punctuations=string.punctuation
+#     # #not removing hyphen; incase considering time period
+#     punctuations.replace("-",'')
+#     pattern= r"[{}]".format(punctuations)
+#     words_punc_removed=[]
+#     for w in words_in_tweets:
+#         words_punc_removed.append(re.sub(pattern,"",w))
 
 #removing stopwords is,am,are
-stopwords_set = set(stopwords.words("english"))
+stopwordsSet = set(stopwords.words("english"))
+garbageTerms2 = ['', "http", "want", "need", "' ", '’ ', "us", "hi", "hey", "find", "need", "due", "look",
+                    "including", "https", "open", "times", "hello", "404", "nt", "able", '.','hi',"get", "know",'.', "http", "want", "need", "' ", '’ ', "us", "please", "hi", "hey", "find", "need", "due", "look",
+                    "including", "https", "open", "apply", "times", "hours", "time", "hello", "404", "nt", "able","covid","covid-19",'thats','0800',
+                    "get", "know","coronavirus","virus","oh",'yuriy','tijianne','name','well',"set","thats"]
+
 cleaned_tweets = []
 
 for index, row in data.iterrows():
     # filerting out all the stopwords
-    words_without_stopwords = [word for word in row.absolute_tidy_tweets.split() if not word in stopwords_set]
+    words_without_stopword1 = [word for word in row.absolute_tidy_tweets.split() if not word in stopwordsSet]
+    words_without_stopwords=[word for word in words_without_stopword1 if not word in garbageTerms2]
 
     # finally creating tweets list of tuples containing stopwords(list) and sentimentType
     cleaned_tweets.append(' '.join(words_without_stopwords))
@@ -898,14 +1008,14 @@ print("/n - - - - printing absolute tidy tweets: /n /n  ",tweetsList)
 covidDF=FilterCovidTweets(data)
 print(covidDF)
 bankDF=FilterBankTweets(data)
-GetTweetSentiment(tweetsList,data)
+# GetTweetSentiment(tweetsList,data)
 index = 0
 counter = 0
 covidTweetsFull=[]
 sizeCovidDF = len(covidDF['DATE'])
 for i in range(len(data['DATE'])):
     if index < sizeCovidDF and data['DATE'][i] == covidDF['DATE'][index]:
-        print("date is: ", data['DATE'][i], "  and matched: ", covidDF['DATE'][index], " and index is : ", index)
+        # print("date is: ", data['DATE'][i], "  and matched: ", covidDF['DATE'][index], " and index is : ", index)
         covidTweetsFull.append(covidDF['TWEET'][index])
         index += 1
     else:
@@ -918,7 +1028,7 @@ bankTweetsFull=[]
 sizeBankDF = len(bankDF['DATE'])
 for i in range(len(data['DATE'])):
     if index < sizeBankDF and data['DATE'][i] == bankDF['DATE'][index]:
-        print("date is: ", data['DATE'][i], "  and matched: ", bankDF['DATE'][index], " and index is : ", index)
+        # print("date is: ", data['DATE'][i], "  and matched: ", bankDF['DATE'][index], " and index is : ", index)
         bankTweetsFull.append(bankDF['TWEET'][index])
         index += 1
     else:
@@ -931,10 +1041,13 @@ for i in range(len(data['DATE'])):
 newcovidDF=pd.DataFrame(list(zip(covidTweetsFull,data['DATE'])),columns=['TWEET','DATE'])
 newbankDF=pd.DataFrame(list(zip(bankTweetsFull,data['DATE'])),columns=['TWEET','DATE'])
 
-CompareSentiments(newcovidDF,newbankDF)
+# CompareSentiments(newcovidDF,newbankDF)
 # count_bank_tweets=len(bankTweets)
 # count_covid_tweets=len(covidTweets)
 # print("#bankTweets: ",count_bank_tweets,"   #covidTweets: ",count_covid_tweets)
-# VisualiseCovidTweets(newcovidDF['TWEET'])
-# VisualiseBankTweets(newbankDF['TWEET'])
+VisualiseTweets(newcovidDF['TWEET'])
+VisualiseTweets(newbankDF['TWEET'])
+CreateWordCloud(newcovidDF['TWEET'])
+CreateWordCloud(newbankDF['TWEET'])
 
+          
